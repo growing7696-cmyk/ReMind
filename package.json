@@ -1,0 +1,40 @@
+{
+  "name": "game-taste",
+  "version": "1.0.0",
+  "description": "Anti-slop skill for games: physics feel, asset utilization, premium UI, security, and production quality - from jam games to large projects.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "game-taste": "bin/cli.mjs"
+  },
+  "files": [
+    "bin",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "audit": "node skills/game-taste/scripts/audit.mjs",
+    "test": "node test/run.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "skill",
+    "agent-skill",
+    "codex",
+    "gamedev",
+    "game",
+    "unity",
+    "godot",
+    "threejs",
+    "phaser"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/growing7696-cmyk/game-taste.git"
+  }
+}

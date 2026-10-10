@@ -1,0 +1,13 @@
+{
+  "name": "game-taste",
+  "owner": {
+    "name": "growing7696-cmyk"
+  },
+  "plugins": [
+    {
+      "name": "game-taste",
+      "source": "./",
+      "description": "Anti-slop skill for games: physics, assets, UI, security, quality."
+    }
+  ]
+}
