@@ -1,8 +1,8 @@
-# game-taste
+# ReMind
 
 **게임이 "AI가 만든 티" 안 나게 만드는 에이전트 스킬** — Claude Code · Codex 등에서 사용.
 
-taste-skill이 웹페이지의 AI 티를 없앤다면, game-taste는 **게임**을 다섯 가지 기준으로 판단하고 끌어올립니다. 주말 게임잼부터 수만 줄짜리 대형 프로젝트까지 규모에 맞춰 기준이 달라집니다.
+taste-skill이 웹페이지의 AI 티를 없앤다면, ReMind는 **게임**을 다섯 가지 기준으로 판단하고 끌어올립니다. 주말 게임잼부터 수만 줄짜리 대형 프로젝트까지 규모에 맞춰 기준이 달라집니다.
 
 | 기준 | 보는 것 |
 |------|---------|
@@ -18,43 +18,43 @@ taste-skill이 웹페이지의 AI 티를 없앤다면, game-taste는 **게임**�
 
 ### Claude Code (모든 프로젝트)
 ```bash
-npx github:growing7696-cmyk/game-taste
+npx github:growing7696-cmyk/ReMind
 ```
 
 ### 현재 프로젝트에만
 ```bash
-npx github:growing7696-cmyk/game-taste --project
+npx github:growing7696-cmyk/ReMind --project
 ```
 
 ### Codex / 기타 에이전트
 ```bash
-npx github:growing7696-cmyk/game-taste --codex
+npx github:growing7696-cmyk/ReMind --codex
 ```
 ```bash
-npx github:growing7696-cmyk/game-taste --all
+npx github:growing7696-cmyk/ReMind --all
 ```
 
 ### skills CLI 사용 시
 ```bash
-npx skills add growing7696-cmyk/game-taste
+npx skills add growing7696-cmyk/ReMind
 ```
 
 ### Claude Code 플러그인 마켓플레이스
 ```
-/plugin marketplace add growing7696-cmyk/game-taste
-/plugin install game-taste@game-taste
+/plugin marketplace add growing7696-cmyk/ReMind
+/plugin install remind@remind
 ```
 
 설치 후 에이전트 세션을 다시 시작하세요. 삭제:
 ```bash
-npx github:growing7696-cmyk/game-taste uninstall
+npx github:growing7696-cmyk/ReMind uninstall
 ```
 
 ## 사용법
 
 에이전트에게 그냥 말하면 됩니다:
 
-- "game-taste로 이 게임 리뷰하고 점수표 줘"
+- "ReMind로 이 게임 리뷰하고 점수표 줘"
 - "Godot으로 2D 플랫포머 만들어줘" (게임 작업이면 자동으로 스킬이 적용됨)
 - "물리랑 타격감 개선해줘", "UI 고급스럽게 바꿔줘", "멀티플레이 보안 점검해줘"
 
@@ -63,7 +63,7 @@ npx github:growing7696-cmyk/game-taste uninstall
 의존성 없는 스캐너가 함께 들어 있습니다. 엔진을 자동 감지하고(Unity, Godot, Unreal, Three.js, Phaser, PixiJS, Babylon, Bevy, 웹 커스텀, C++) 기준별로 의심 지점을 표시합니다.
 
 ```bash
-npx github:growing7696-cmyk/game-taste audit ./my-game
+npx github:growing7696-cmyk/ReMind audit ./my-game
 ```
 
 잡아내는 예시:
@@ -78,7 +78,7 @@ npx github:growing7696-cmyk/game-taste audit ./my-game
 ## 구조
 
 ```
-skills/game-taste/
+skills/remind/
   SKILL.md                    핵심 규칙: 게임 읽기 → 규모 판단 → 5대 기준 → 워크플로 → 점수표
   reference/
     physics.md                고정 스텝 루프, 점프 공식, 충돌, 타격감, 결정론
@@ -97,7 +97,7 @@ test/run.mjs                  스캐너 자체 테스트 (npm test)
 
 ## English
 
-**game-taste** is an anti-slop agent skill for games. It judges and raises five pillars — physics feel, asset utilization, premium UI, security, and production quality — and scales from jam games to large productions. Install with `npx github:growing7696-cmyk/game-taste` (Claude Code), `--project`, `--codex`, or `--all`, and audit any project with `npx github:growing7696-cmyk/game-taste audit <dir>`. Requires Node 18+.
+**ReMind** is an anti-slop agent skill for games. It judges and raises five pillars — physics feel, asset utilization, premium UI, security, and production quality — and scales from jam games to large productions. Install with `npx github:growing7696-cmyk/ReMind` (Claude Code), `--project`, `--codex`, or `--all`, and audit any project with `npx github:growing7696-cmyk/ReMind audit <dir>`. Requires Node 18+.
 
 ## License
 

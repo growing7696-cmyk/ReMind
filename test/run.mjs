@@ -8,8 +8,8 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const auditScript = path.join(repo, 'skills', 'game-taste', 'scripts', 'audit.mjs');
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'game-taste-test-'));
+const auditScript = path.join(repo, 'skills', 'remind', 'scripts', 'audit.mjs');
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'remind-test-'));
 
 function write(root, rel, content) {
   const p = path.join(root, rel);

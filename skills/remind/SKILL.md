@@ -1,9 +1,9 @@
 ---
-name: game-taste
+name: remind
 description: Anti-slop skill for games. Use when building, extending, reviewing, or polishing a game or game prototype in any engine (Unity, Godot, Unreal, Three.js, Babylon.js, Phaser, PixiJS, Bevy, raw canvas/WebGL). Judges and raises five pillars - physics feel, asset utilization, premium UI/HUD, security, and production quality - and scales its rules from a weekend jam to a large multi-system production. Not for non-game websites (use a frontend taste skill for those).
 ---
 
-# game-taste: Anti-Slop Skill for Games
+# ReMind: Anti-Slop Skill for Games
 
 > Games that look and feel AI-generated share the same tells: floaty physics tied to frame rate, mismatched asset packs, an Arial "Score: 0" in the corner, a client that trusts itself, and one 3,000-line `main.js`.
 > This skill exists to make the output look like a team with taste shipped it.
@@ -146,7 +146,7 @@ node <skill-dir>/scripts/audit.mjs <project-dir> --json
 Score each pillar 0-5 using `audit/scorecard.md`. Report in this shape:
 
 ```
-game-taste scorecard  (tier: T2, engine: Godot 4, online: leaderboard)
+ReMind scorecard  (tier: T2, engine: Godot 4, online: leaderboard)
 Physics   4/5  fixed step + interpolation, derived jump arc; missing CCD on arrows
 Assets    3/5  cohesive 16px set; 11 unused files removed; audio lacks variations
 UI        4/5  themed kit, controller focus, settings complete; no subtitles yet

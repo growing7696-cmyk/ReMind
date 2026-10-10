@@ -1,11 +1,11 @@
 {
-  "name": "game-taste",
+  "name": "remind",
   "version": "1.0.0",
   "description": "Anti-slop skill for games: physics feel, asset utilization, premium UI, security, and production quality - from jam games to large projects.",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "game-taste": "bin/cli.mjs"
+    "remind": "bin/cli.mjs"
   },
   "files": [
     "bin",
@@ -14,7 +14,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "audit": "node skills/game-taste/scripts/audit.mjs",
+    "audit": "node skills/remind/scripts/audit.mjs",
     "test": "node test/run.mjs"
   },
   "engines": {
@@ -35,6 +35,6 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/growing7696-cmyk/game-taste.git"
+    "url": "git+https://github.com/growing7696-cmyk/ReMind.git"
   }
 }

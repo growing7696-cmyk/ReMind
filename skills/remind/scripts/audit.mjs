@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// game-taste audit: heuristic scanner for game projects.
+// ReMind audit: heuristic scanner for game projects.
 // Flags tells across five pillars (physics, assets, ui, security, quality).
 // Zero dependencies. Findings are leads, not verdicts - confirm by reading the code.
 
@@ -47,7 +47,7 @@ export async function runAudit(argv = process.argv.slice(2)) {
   }
   const root = path.resolve(args[0] || '.');
   if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
-    console.error(`game-taste audit: not a directory: ${root}`);
+    console.error(`ReMind audit: not a directory: ${root}`);
     return 2;
   }
 
@@ -461,7 +461,7 @@ const TAG = { error: 'ERR ', warn: 'WARN', info: 'info' };
 
 function printReport(root, ctx, findings, showAll) {
   const s = ctx.stats;
-  console.log(`\ngame-taste audit  ${root}`);
+  console.log(`\nReMind audit  ${root}`);
   console.log(`engine: ${ctx.engine}${s.physicsLib ? ` (+${s.physicsLib})` : ''}   code: ${s.codeFiles} files / ${s.codeLines} lines   assets: ${Object.entries(s.assets).filter(([, n]) => n).map(([k, n]) => `${n} ${k}`).join(', ') || 'none'}`);
   if (ctx.engine === 'unity' || ctx.engine === 'unreal') console.log('note: unused-asset detection skipped (references are GUID/binary based in this engine)');
 

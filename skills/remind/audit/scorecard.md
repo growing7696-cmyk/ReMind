@@ -63,7 +63,7 @@ Score each pillar from 0 to 5. Use the evidence (code read, audit script output,
 
 ## Report template
 ```
-game-taste scorecard  (tier: T?, engine: ?, online: ?)
+ReMind scorecard  (tier: T?, engine: ?, online: ?)
 Physics   ?/5  <one-line evidence>
 Assets    ?/5  <one-line evidence>
 UI        ?/5  <one-line evidence>
