@@ -1,6 +1,6 @@
 {
   "name": "remind",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Anti-slop skill for games: physics feel, asset utilization, premium UI, security, and production quality - from jam games to large projects.",
   "license": "MIT",
   "type": "module",

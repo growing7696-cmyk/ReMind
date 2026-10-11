@@ -14,6 +14,10 @@ taste-skill이 웹페이지의 AI 티를 없앤다면, ReMind는 **게임**을 �
 
 작업이 끝나면 에이전트가 **점수표(0–5점 × 5개 기준)** 를 보고하고, 최소 기준(floor)에 못 미치면 "완료"로 처리하지 않습니다.
 
+- **세 가지 모드**: 빌드(새로 만들기) · 리뷰(수정 없이 점수표와 고칠 목록만) · 폴리싱(가장 약한 기준부터 끌어올리고 전/후 비교)
+- **직접 실행해서 검증**: 점수마다 근거 수준 `[run]`(실행해서 확인) · `[test]`(자동 테스트) · `[read]`(코드만 읽음)을 붙이고, 코드만 읽은 기준은 최대 3점
+- **바로 쓰는 레시피**: 시드 RNG, 오브젝트 풀, 화면 흔들림, 히트스톱, 입력 버퍼·코요테 타임, 사운드 변형, 버전 붙은 세이브, 상태 머신, 프레임 시간 측정
+
 ## 설치
 
 ### Claude Code (모든 프로젝트)
@@ -60,20 +64,28 @@ npx github:growing7696-cmyk/ReMind uninstall
 
 ## 점검 스크립트 (audit)
 
-의존성 없는 스캐너가 함께 들어 있습니다. 엔진을 자동 감지하고(Unity, Godot, Unreal, Three.js, Phaser, PixiJS, Babylon, Bevy, 웹 커스텀, C++) 기준별로 의심 지점을 표시합니다.
+의존성 없는 스캐너가 함께 들어 있습니다. 엔진을 자동 감지하고(Unity, Godot, Unreal, Roblox, LÖVE, GameMaker, Defold, Three.js, Phaser, PixiJS, Babylon, PlayCanvas, Kaplay, Excalibur, Bevy, 웹 커스텀, C++) 프로젝트 규모 등급(T1–T3)을 추정한 뒤 기준별로 의심 지점을 표시합니다.
 
 ```bash
 npx github:growing7696-cmyk/ReMind audit ./my-game
 ```
 
 잡아내는 예시:
-- 프레임 의존 이동, `setInterval` 게임 루프, Update/`_process` 안의 물리 호출, 고정 스텝 없음
+- 프레임 의존 이동, `setInterval` 게임 루프, Update/`_process` 안의 물리 호출, 고정 스텝 없음, 상수 계수 `lerp(a, b, 0.1)`
 - 클라이언트 번들 속 API 키, `innerHTML`/`eval`, 클라이언트가 보내는 점수, BinaryFormatter, 열린 Firebase 규칙
+- Roblox: 클라이언트가 보낸 값을 그대로 leaderstats·체력·데이터에 쓰는 `OnServerEvent`, `InvokeClient`, 구식 `wait()`
 - 쓰이지 않는 에셋, 용량 큰 이미지·WAV, 크레딧/라이선스 파일 없음, 사운드 부족
 - 이모지 아이콘, 기본 폰트, SaaS풍 그라데이션·글래스모피즘, `alert()`
 - 거대 파일(god file), 시드 없는 랜덤, 일시정지·설정·볼륨·키 변경 없음, 테스트 없음
 
 `--json`으로 기계가 읽을 수 있는 출력, 커밋된 비밀키 등 `error`가 있으면 종료 코드 1 (CI에 넣기 좋음). 휴리스틱이므로 결과는 "단서"이고, 에이전트가 코드를 읽어 확인합니다.
+
+오탐 끄기: 해당 줄이나 바로 윗줄 주석에 `remind-ignore` (전체) 또는 `remind-ignore: frame-lerp` (규칙 지정)을 쓰거나, 프로젝트 루트의 `.remindignore`에 경로·글롭을 한 줄씩 적습니다.
+```
+# .remindignore
+vendor/
+generated/**/*.js
+```
 
 ## 구조
 
@@ -81,13 +93,15 @@ npx github:growing7696-cmyk/ReMind audit ./my-game
 skills/remind/
   SKILL.md                    핵심 규칙: 게임 읽기 → 규모 판단 → 5대 기준 → 워크플로 → 점수표
   reference/
-    physics.md                고정 스텝 루프, 점프 공식, 충돌, 타격감, 결정론
+    physics.md                고정 스텝 루프, 점프 공식, 충돌, 타격감, 카메라, 결정론
     assets.md                 아트 바이블, 통일감, 재활용, 파이프라인, 오디오, 라이선스
     ui.md                     UI 모드, HUD, 타이포, 테마 키트, 모션, 입력, 접근성
     security.md               위협 등급(S0–S4), 서버 권한, 비밀키, 검증, 정보 누출
     quality.md                성능 예산, 메모리, 견고성, 테스트, 폴리싱
     large-projects.md         대형 프로젝트 구조, 문서 지도, AI 작업 규칙
-    engines.md                엔진별 관용구
+    verify.md                 실제 실행·측정 방법, 근거 수준(run/test/read)
+    recipes.md                바로 쓰는 코드 조각 (RNG, 풀, 흔들림, 히트스톱, 세이브 등)
+    engines.md                엔진별 관용구 (Roblox, LÖVE, GameMaker, Defold 포함)
     ai-tells.md               AI 티 목록과 해결책
   audit/scorecard.md          점수 기준표
   scripts/audit.mjs           점검 스크립트
@@ -97,7 +111,11 @@ test/run.mjs                  스캐너 자체 테스트 (npm test)
 
 ## English
 
-**ReMind** is an anti-slop agent skill for games. It judges and raises five pillars — physics feel, asset utilization, premium UI, security, and production quality — and scales from jam games to large productions. Install with `npx github:growing7696-cmyk/ReMind` (Claude Code), `--project`, `--codex`, or `--all`, and audit any project with `npx github:growing7696-cmyk/ReMind audit <dir>`. Requires Node 18+.
+**ReMind** is an anti-slop agent skill for games. It judges and raises five pillars — physics feel, asset utilization, premium UI, security, and production quality — and scales from jam games to large productions. It works in build, review, or polish mode, tags every score with run/test/read evidence, and ships copy-ready recipes for the common feel and robustness building blocks. Install with `npx github:growing7696-cmyk/ReMind` (Claude Code), `--project`, `--codex`, or `--all`, and audit any project with `npx github:growing7696-cmyk/ReMind audit <dir>`. Requires Node 18+.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

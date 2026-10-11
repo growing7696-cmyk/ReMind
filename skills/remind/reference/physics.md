@@ -97,20 +97,35 @@ Ragdolls: blend from animation to ragdoll; clamp joint limits; disable self-coll
 - Screen shake (trauma model): add trauma 0-1 on events, `shake = trauma^2`, offset and rotation from smooth noise (Perlin/simplex), decay trauma per second. Global multiplier in accessibility settings.
 - Knockback with a short control lockout, squash on land, stretch on jump, dust/particles on land and turnaround, camera lead in the movement direction, camera damping (critically damped spring, not lerp with a constant factor per frame).
 - Frame-rate independent smoothing: `x = lerp(x, target, 1 - exp(-k * dt))`, never `lerp(x, target, 0.1)` per frame.
+- Copy-ready versions of shake, hit-stop, smoothing, and input buffering are in `recipes.md`.
 
-## 6. Determinism and networking
+## 6. Camera
+
+The camera is half of how movement feels. A perfect controller behind a rigid or jittery camera still reads as cheap.
+
+- **Update order**: camera follows the *interpolated* render position, after the simulation step, in the late/render phase (`LateUpdate`, `_process` after physics interpolation, after `render` interpolation in custom loops). Following the raw physics body causes the classic stutter.
+- **2D platformer**: a dead zone (window) the player moves inside without moving the camera; look-ahead in the facing or velocity direction; vertical framing that only re-centres on landing (platform snapping) so jumps do not bob the screen; bounds clamped to the level.
+- **Top-down / twin-stick**: offset toward the aim or mouse direction (20-35% of the way), smoothed.
+- **3D third-person**: spring-arm with collision so the camera never clips walls; separate yaw/pitch sensitivity with invert options; pitch clamp; auto-recentre after idle only when the genre wants it; aim/ADS zoom eased, not snapped.
+- **First-person**: no smoothing on look input (raw mouse), optional head bob that is off-able and reduced by default; FOV slider (60-110 on PC).
+- **Pixel art**: snap the final camera position to whole pixels at the target scale (or render to a low-res target and scale up) to avoid shimmering sprites.
+- **Smoothing**: critically damped spring or exponential damping (`recipes.md` §3) per axis; never constant-factor lerp per frame.
+- **Framing events**: brief zoom or offset for big moments (boss intro, combo finish), always eased and short; shake is applied as an offset on top of the follow position, never into it.
+- Engines: Cinemachine (Unity), `Camera2D` smoothing + limits and `SpringArm3D` (Godot), `SpringArmComponent` (Unreal), `phaser` `startFollow` with lerp and deadzone (set lerp from dt or use roundPixels for pixel art).
+
+## 7. Determinism and networking
 
 - Seeded RNG per system; never call global `Math.random()` inside the simulation.
 - Lockstep or rollback netcode needs deterministic simulation: fixed step, fixed-point or carefully controlled float, ordered iteration, no wall-clock reads in sim.
 - Server-authoritative games: the server runs the same fixed-step simulation; clients predict and reconcile.
 
-## 7. Debugging and tuning
+## 8. Debugging and tuning
 
 - Debug overlay toggle: colliders, velocities, contact points, ground normal, state machine state.
 - Tuning values hot-reload from data in T2+.
 - Record the final tuned values and the reason in `docs/FEEL.md` (T2+), so future changes do not regress feel.
 
-## 8. Physics scoring hints
-- 5: fixed step + interpolation, derived and documented values, forgiveness mechanics, CCD, layered juice, debug tools.
+## 9. Physics scoring hints
+- 5: fixed step + interpolation, derived and documented values, forgiveness mechanics, CCD, layered juice, a camera that follows interpolated positions with genre-appropriate framing, debug tools.
 - 3: fixed step, reasonable feel, a couple of magic numbers or missing CCD.
 - 1: frame-dependent movement or physics in render updates; tunnelling; jitter.

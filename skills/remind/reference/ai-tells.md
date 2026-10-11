@@ -15,6 +15,8 @@ Patterns that make a game look machine-generated, with the fix for each. Use it 
 | Collider equals the full sprite rectangle | Authored, slightly forgiving hitboxes |
 | `lerp(cam, target, 0.1)` every frame | `1 - exp(-k*dt)` smoothing or critically damped spring |
 | Hits with no hit-stop, shake, knockback, or sound | Layered juice scaled to impact |
+| Camera parented rigidly to the player, or following the raw physics body (stutter) | Follow the interpolated position in late update; dead zone, look-ahead, damped spring (`physics.md` §6) |
+| Pixel-art sprites shimmer while the camera moves | Snap the camera to whole pixels at the target scale |
 
 ## Assets
 | Tell | Fix |
@@ -50,6 +52,7 @@ Patterns that make a game look machine-generated, with the fix for each. Use it 
 | `eval(levelData)` / `JSON` parsed then executed | Safe parsing + schema validation; sandboxed scripting |
 | Full world state broadcast to all clients | Interest management |
 | Gold and items stored in an editable local save for an online economy | Server-owned inventory |
+| Roblox `OnServerEvent` handler that sets coins or damage from a client argument | Server computes the outcome; validate every argument |
 
 ## Quality and structure
 | Tell | Fix |

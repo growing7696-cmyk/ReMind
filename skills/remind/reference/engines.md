@@ -50,5 +50,37 @@ Short, engine-specific notes so the pillars translate into the right code. Follo
 - ECS-first: components for data, systems for behaviour, events for cross-system messages, states for game flow.
 - Assets via `AssetServer` with loading states; `bevy_asset_loader` for loading screens.
 
+## Roblox (Luau)
+- Every client is hostile. `RemoteEvent.OnServerEvent` / `RemoteFunction.OnServerInvoke` handlers receive `player` from the engine plus arguments the client chose: validate type, range, ownership, distance, and cooldown on the server for every argument. Never set `leaderstats`, currency, or damage from a client-sent value.
+- Never use `RemoteFunction:InvokeClient` for anything the server waits on (a client can hang it forever).
+- Server scripts in `ServerScriptService`, secrets and server modules in `ServerStorage`; anything in `ReplicatedStorage` or `Workspace` is readable by clients.
+- `task.wait`/`task.spawn`/`task.delay` instead of deprecated `wait`/`spawn`/`delay`; `RunService.Heartbeat`/`Stepped` with the passed `dt`.
+- Physics: network ownership decides who simulates a part; set it to the server for anything gameplay-critical (`SetNetworkOwner(nil)`), and sanity-check client-owned character movement (speed, teleport).
+- Data: `DataStoreService` calls wrapped in `pcall` with retries and session locking (or ProfileStore); never save on every change.
+- Typed Luau (`--!strict`) for modules; Rojo for file-based projects; TestEZ or Jest-Lua for pure logic.
+- UI: build a themed kit from `UIStroke`, `UICorner`, `9-slice` `ImageLabel`s and a custom font (`Font.new`); `UIScale` + `UIAspectRatioConstraint` for devices; never ship default `SourceSans` buttons.
+
+## LÖVE (Lua)
+- Own the fixed step in `love.run` or with an accumulator in `love.update(dt)`; `love.physics` (Box2D) worlds stepped with a fixed `dt`.
+- Pixel art: `love.graphics.setDefaultFilter('nearest', 'nearest')`, render to a low-res canvas and scale by integers.
+- Audio: `love.audio.newSource(path, 'static')` for SFX, `'stream'` for music; clone sources for overlapping variations.
+- Avoid globals; modules return tables. No `loadstring`/`load` on save or mod files - parse data, do not execute it.
+
+## GameMaker (GML)
+- Use delta time (`delta_time / 1000000`) or a fixed game speed set deliberately; do not mix the two.
+- Structs and constructors for data; `ds_*` structures freed or replaced by arrays/structs; avoid `with (all)` in step events.
+- Physics world: set `physics_world_update_speed` and iterations explicitly; collision masks authored, not full-sprite.
+- UI on the GUI layer (`Draw GUI`) with `display_set_gui_size` for resolution independence; custom fonts with fallback ranges for CJK.
+
+## Defold (Lua)
+- `update(self, dt)` with `dt`; enable fixed timestep in `game.project` for physics-heavy games (`physics.use_fixed_timestep`) and use `fixed_update`.
+- Messages (`msg.post`) are the module boundary; keep scripts small and data in `go.property` and Lua modules.
+- GUI scenes for UI with layouts per orientation; texture profiles for compression per platform.
+
+## Web: PlayCanvas / Kaplay / Excalibur
+- PlayCanvas: physics via its Ammo/Rapier integration in the fixed update; `app.graphicsDevice.maxPixelRatio` capped; texture compression via the editor's asset tasks.
+- Kaplay (formerly Kaboom): `dt()` for every movement; `setGravity` tuned from derived jump numbers; replace default `text()` font with a loaded bitmap or TTF font.
+- Excalibur: `Physics` config with fixed update (`fixedUpdateFps`); scenes for flow separation; loader with real progress.
+
 ## Engine-agnostic reminders
 - Whatever the engine: fixed-step simulation, data-driven tuning, themed UI kit, server-owned outcomes when online, pooled hot paths.

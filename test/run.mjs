@@ -136,6 +136,63 @@ const c = audit(clean);
 expect(c.code === 0, 'clean: exit code 0');
 expect(!c.out.findings.some((f) => ['frame-dependent', 'no-fixed-step', 'innerhtml', 'secret'].includes(f.rule)), 'clean: no physics/security false positives');
 
+expect(c.out.tier === 'T1', `clean: tier guess T1 (got ${c.out.tier})`);
+
+// --- lerp + suppression fixture ---
+const misc = path.join(tmp, 'misc');
+write(misc, 'cam.js', `
+function update() { cam.x = lerp(cam.x, player.x, 0.1); }
+function update2(dt) { cam.x = lerp(cam.x, player.x, 1 - Math.exp(-10 * dt)); }
+// remind-ignore: innerhtml
+el.innerHTML = trustedTemplate(x);
+el.innerHTML = other(y); // remind-ignore: frame-lerp
+`);
+write(misc, 'Cam.cs', 'class C { void LateUpdate() { transform.position = Vector3.Lerp(transform.position, target.position, 0.1f); } }\n');
+write(misc, 'vendor-lib/big.js', 'eval(x);\n');
+write(misc, 'gen/out/x.js', 'eval(y);\n');
+write(misc, '.remindignore', '# third-party\nvendor-lib/\ngen/**/*.js\n');
+const m = audit(misc);
+const mr = m.out.findings;
+expect(mr.filter((f) => f.rule === 'frame-lerp').length === 2, 'misc: constant lerp flagged in JS and C#, dt-based lerp not flagged');
+expect(mr.filter((f) => f.rule === 'innerhtml').length === 1, 'misc: remind-ignore suppresses only the named rule');
+expect(m.out.stats.suppressed === 1, 'misc: suppressed count reported');
+expect(!mr.some((f) => f.file && /vendor-lib|gen\//.test(f.file)), 'misc: .remindignore excludes paths and globs');
+
+// --- roblox fixture ---
+const rbx = path.join(tmp, 'roblox');
+write(rbx, 'default.project.json', '{"name":"r","tree":{"$className":"DataModel"}}');
+write(rbx, 'src/server/Shop.server.luau', `
+local Remotes = game.ReplicatedStorage.Remotes
+Remotes.AddCoins.OnServerEvent:Connect(function(player, amount)
+\tplayer.leaderstats.Coins.Value += amount
+end)
+Remotes.Buy.OnServerEvent:Connect(function(player, itemId)
+\tlocal price = Prices[itemId]
+\tif typeof(price) ~= "number" then return end
+\tplayer.leaderstats.Coins.Value -= price
+end)
+wait(1)
+task.wait(1)
+local answer = Remotes.Ask:InvokeClient(player)
+`);
+const r = audit(rbx);
+const rr = r.out.findings;
+expect(r.out.engine === 'roblox', `engine detected as roblox (got ${r.out.engine})`);
+expect(rr.filter((f) => f.rule === 'remote-trust').length === 1, 'roblox: client amount written to leaderstats flagged once (server-priced buy not flagged)');
+expect(rr.filter((f) => f.rule === 'deprecated-api').length === 1, 'roblox: wait() flagged, task.wait() not');
+expect(rr.some((f) => f.rule === 'invoke-client'), 'roblox: InvokeClient flagged');
+
+// --- engine detection ---
+const det = (name, files) => { const d = path.join(tmp, 'det-' + name); for (const [k, v] of Object.entries(files)) write(d, k, v); return audit(d).out.engine; };
+expect(det('love', { 'main.lua': 'function love.update(dt) end' }) === 'love2d', 'detects LÖVE');
+expect(det('defold', { 'game.project': '[project]\ntitle = g' }) === 'defold', 'detects Defold');
+expect(det('gm', { 'g.yyp': '{}' }) === 'gamemaker', 'detects GameMaker');
+expect(det('kaplay', { 'package.json': JSON.stringify({ dependencies: { kaplay: '3' } }) }) === 'web:kaplay', 'detects Kaplay');
+
+// --- CLI flag parsing ---
+const help = execFileSync('node', [auditScript, '-h'], { encoding: 'utf8' });
+expect(/Usage/.test(help), '-h prints usage instead of treating it as a directory');
+
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(failed ? `\n${failed} check(s) failed` : '\nall checks passed');
 process.exit(failed ? 1 : 0);

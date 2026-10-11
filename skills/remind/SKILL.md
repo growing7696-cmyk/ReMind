@@ -1,6 +1,6 @@
 ---
 name: remind
-description: Anti-slop skill for games. Use when building, extending, reviewing, or polishing a game or game prototype in any engine (Unity, Godot, Unreal, Three.js, Babylon.js, Phaser, PixiJS, Bevy, raw canvas/WebGL). Judges and raises five pillars - physics feel, asset utilization, premium UI/HUD, security, and production quality - and scales its rules from a weekend jam to a large multi-system production. Not for non-game websites (use a frontend taste skill for those).
+description: Anti-slop skill for games. Use when building, extending, reviewing, or polishing a game or game prototype in any engine (Unity, Godot, Unreal, Roblox, Three.js, Babylon.js, Phaser, PixiJS, Kaplay, LÖVE, GameMaker, Defold, Bevy, raw canvas/WebGL), including requests like "make it feel better", "fix the jank", "review my game", or "게임 만들어줘". Judges and raises five pillars - physics feel, asset utilization, premium UI/HUD, security, and production quality - and scales its rules from a weekend jam to a large multi-system production. Not for non-game websites (use a frontend taste skill for those).
 ---
 
 # ReMind: Anti-Slop Skill for Games
@@ -19,7 +19,7 @@ The five pillars this skill judges, in this order:
 | 4 | **Security** | Is the threat model right for the game, and does the client never get trusted with outcomes? | `reference/security.md` |
 | 5 | **Quality** | Does it hold its frame budget, survive edge cases, and feel polished end to end? | `reference/quality.md` |
 
-Supporting references: `reference/large-projects.md` (architecture and working in big codebases), `reference/engines.md` (per-engine idioms), `reference/ai-tells.md` (the full tell catalogue), `audit/scorecard.md` (scoring rubric).
+Supporting references: `reference/verify.md` (run and measure the game; evidence levels), `reference/recipes.md` (copy-ready RNG, pools, shake, hit-stop, input buffer, sound variations, saves, state machines), `reference/large-projects.md` (architecture and working in big codebases), `reference/engines.md` (per-engine idioms), `reference/ai-tells.md` (the full tell catalogue), `audit/scorecard.md` (scoring rubric).
 
 ---
 
@@ -29,13 +29,23 @@ Before writing a line, extract these. If the user did not say, infer from the re
 
 1. **Genre and core verb** - platformer (jump), shooter (aim), racer (steer), puzzle (place), sim (manage), RPG (choose). The core verb is what physics and feel serve.
 2. **Camera and dimension** - 2D side, 2D top-down, isometric, 2.5D, 3D third-person, 3D first-person.
-3. **Engine and language** - detect from files: `ProjectSettings/` (Unity), `project.godot` (Godot), `*.uproject` (Unreal), `package.json` deps like `three`, `phaser`, `pixi.js`, `@babylonjs/core`, `@dimforge/rapier*`, `matter-js`, `cannon-es` (web), `Cargo.toml` with `bevy`.
+3. **Engine and language** - detect from files: `ProjectSettings/` (Unity), `project.godot` (Godot), `*.uproject` (Unreal), `default.project.json` or `.luau` files (Roblox/Rojo), `main.lua` calling `love.` (LÖVE), `*.yyp` (GameMaker), `game.project` (Defold), `package.json` deps like `three`, `phaser`, `pixi.js`, `@babylonjs/core`, `playcanvas`, `kaplay`, `excalibur`, `@dimforge/rapier*`, `matter-js`, `cannon-es` (web), `Cargo.toml` with `bevy`.
 4. **Platform** - desktop, web, mobile, console. This changes input, performance budgets, UI scale, and asset compression.
 5. **Online surface** - none / leaderboards / accounts and cloud saves / real-time multiplayer / real-money economy. This sets the security tier.
 6. **Art direction** - pixel art, low-poly, hand-painted, realistic PBR, vector, voxel. If none exists, you must define one before adding assets (see Pillar 2).
 7. **Scale tier** - see section 1.
 
-Write these down in 7 lines at the top of your plan. In existing projects, also run the audit script (section 5) before proposing changes.
+Write these down in 7 lines at the top of your plan. In existing projects, also run the audit script (section 5) before proposing changes; it prints a tier guess and the detected engine.
+
+### Pick the mode
+
+| Mode | Trigger | What you do |
+|------|---------|-------------|
+| **Build** | "make a game", new feature, new prototype | Full workflow (section 4). Feel and core loop first. |
+| **Review** | "review", "audit", "score", "what is wrong with" | Read, audit, run (`reference/verify.md`), score. **No edits** unless asked. Deliver the scorecard plus a ranked fix list. |
+| **Polish** | "make it feel better", "make it look premium", "fix the jank" | Score first, then raise the lowest pillar that is below its floor, then the cheapest high-impact item. Capture before/after evidence. |
+
+When the request is ambiguous, Review first, then offer Polish.
 
 ---
 
@@ -74,7 +84,8 @@ Each pillar has a short core here. Load its reference file when the task touches
 4. **Correct body type** - kinematic character controller for player characters in most action games; dynamic rigidbodies for props, ragdolls, vehicles. Never teleport a dynamic body via transform.
 5. **Collision hygiene** - simplified collider shapes, collision layers and masks, continuous collision detection (or raycast sweeps) for fast projectiles, sleeping enabled, consistent world units (1 unit = 1 metre in 3D, a documented px-per-unit in 2D).
 6. **Juice belongs to physics feel**: hit-stop 40-120 ms, trauma-based screen shake (shake = trauma^2, decays over time, reducible in settings), knockback, squash and stretch, landing dust.
-7. **All tuning values in data** (ScriptableObject, Resource, JSON, config table), never scattered magic numbers. Add a debug draw toggle for colliders and velocities.
+7. **The camera follows interpolated positions** in the late/render phase, with genre framing (dead zone and look-ahead in 2D, collision-aware spring arm in 3D) and damped, frame-independent smoothing. See `reference/physics.md` §6.
+8. **All tuning values in data** (ScriptableObject, Resource, JSON, config table), never scattered magic numbers. Add a debug draw toggle for colliders and velocities.
 
 ### 3.2 Assets - cohesive, fully used, optimized, legal
 1. **Art bible before assets**: a 5-8 colour core palette plus 1-2 accents, one pixel density or texel density, one line weight, one light direction, silhouettes readable at gameplay zoom. Write it to `docs/ART_BIBLE.md` in T2+.
@@ -121,8 +132,11 @@ Each pillar has a short core here. Load its reference file when the task touches
 2. **Plan** - list changes grouped by pillar. For T2+, also name the files and systems touched and confirm module boundaries.
 3. **Build in slices** - one playable slice at a time (core loop first, then feel, then UI, then content). Each slice must run.
 4. **Feel pass** - tune physics and juice values in data, not code; record the final values.
-5. **Gate** - run the audit script again, fill in the scorecard, and fix anything below its floor.
-6. **Report** - deliver the scorecard (section 6) with the change summary.
+5. **Verify by running** - launch the game and collect evidence per `reference/verify.md`: console clean, screenshots at the target aspect ratios, p95/p99 frame time at the busiest moment, focus-loss behaviour, the core verb exercised. If it cannot be launched here, say so and run what can be run.
+6. **Gate** - run the audit script again, fill in the scorecard, and fix anything below its floor.
+7. **Report** - deliver the scorecard (section 6) with the change summary and the commands the user can run to reproduce your checks.
+
+Reach for `reference/recipes.md` before writing a shake, pool, RNG, buffer, save, or state machine from scratch.
 
 For large existing codebases, read `reference/large-projects.md` before editing: map the project, respect its architecture, and never rewrite across many files when a local change works.
 
@@ -139,6 +153,8 @@ node <skill-dir>/scripts/audit.mjs <project-dir> --json
 
 `<skill-dir>` is the folder this file lives in. The script is heuristic: treat findings as leads, confirm by reading the code, and say which findings were false positives. Exit code 1 means at least one `error` (for example a committed secret).
 
+Confirmed false positives: add `remind-ignore` (all rules) or `remind-ignore: <rule>` in a comment on that line or the line above, or list paths/globs in a `.remindignore` file at the project root. Never suppress a `secret` finding without confirming the value is not a real key.
+
 ---
 
 ## 6. SCORECARD (required in the final report)
@@ -146,15 +162,17 @@ node <skill-dir>/scripts/audit.mjs <project-dir> --json
 Score each pillar 0-5 using `audit/scorecard.md`. Report in this shape:
 
 ```
-ReMind scorecard  (tier: T2, engine: Godot 4, online: leaderboard)
-Physics   4/5  fixed step + interpolation, derived jump arc; missing CCD on arrows
-Assets    3/5  cohesive 16px set; 11 unused files removed; audio lacks variations
-UI        4/5  themed kit, controller focus, settings complete; no subtitles yet
-Security  4/5  server validates score from input log; rate limited
-Quality   3/5  60 fps on target; GC spike on wave spawn (pool pending)
+ReMind scorecard  (mode: polish, tier: T2, engine: Godot 4, online: leaderboard)
+Physics   4/5  [run]  fixed step + interpolation, derived jump arc; missing CCD on arrows
+Assets    3/5  [read] cohesive 16px set; 11 unused files removed; audio lacks variations
+UI        4/5  [run]  themed kit, controller focus, settings complete; no subtitles yet
+Security  4/5  [test] server validates score from input log; rate limited
+Quality   3/5  [run]  p95 15.2 ms on target; GC spike on wave spawn (pool pending)
 Floors: PASS   Overall: 3.6
 Next: pool wave spawns, add audio variations, CCD on arrows
 ```
+
+Evidence tags come from `reference/verify.md`: `[run]`, `[test]`, or `[read]`. A `[read]`-only pillar is capped at 3. In Polish mode, add the previous score: `UI 2->4/5`.
 
 **Floors** (any failure blocks "done"):
 - Physics >= 3 when the core verb is physics-driven.
@@ -177,6 +195,8 @@ Next: pool wave spawns, add audio variations, CCD on arrows
 - [ ] Pause, settings, and focus navigation work (T2+)
 - [ ] No secrets in the client; server owns outcomes for anything shared
 - [ ] No `innerHTML`/`eval` on untrusted data
-- [ ] Hot loop allocation-free; frame time measured on the target
+- [ ] Camera follows interpolated positions; smoothing is frame-independent
+- [ ] Hot loop allocation-free; frame time measured on the target (p95/p99)
+- [ ] Game launched after the last change; console clean; screenshots at target aspects
 - [ ] Resolution and aspect changes tested
-- [ ] Audit script re-run; scorecard delivered with honest scores
+- [ ] Audit script re-run; scorecard delivered with honest scores and evidence tags

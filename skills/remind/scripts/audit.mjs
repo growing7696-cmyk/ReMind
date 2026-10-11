@@ -17,8 +17,10 @@ const IGNORE_DIRS = new Set([
 
 const CODE_EXT = new Set([
   '.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx', '.vue', '.svelte', '.cs', '.gd', '.cpp', '.cc',
-  '.h', '.hpp', '.c', '.py', '.lua', '.rs', '.java', '.kt', '.swift', '.go', '.html', '.css', '.scss',
+  '.h', '.hpp', '.c', '.py', '.lua', '.luau', '.rs', '.java', '.kt', '.swift', '.go', '.html', '.css', '.scss',
+  '.gml', '.script', '.gui_script',
 ]);
+const LUA_EXT = new Set(['.lua', '.luau', '.script', '.gui_script']);
 const DATA_EXT = new Set([
   '.json', '.tscn', '.tres', '.godot', '.unity', '.prefab', '.asset', '.mat', '.xml', '.yaml',
   '.yml', '.tmx', '.tsj', '.tmj', '.ldtk', '.atlas', '.plist', '.ini', '.cfg', '.toml', '.env',
@@ -39,10 +41,10 @@ const PER_RULE_LIMIT = 8;
 // ---------- args ----------
 
 export async function runAudit(argv = process.argv.slice(2)) {
-  const args = argv.filter((a) => !a.startsWith('--'));
-  const flags = new Set(argv.filter((a) => a.startsWith('--')));
+  const args = argv.filter((a) => !a.startsWith('-'));
+  const flags = new Set(argv.filter((a) => a.startsWith('-')));
   if (flags.has('--help') || flags.has('-h')) {
-    console.log('Usage: audit.mjs [project-dir] [--json] [--all]\n  --json  machine-readable output\n  --all   do not collapse repeated findings');
+    console.log('Usage: audit.mjs [project-dir] [--json] [--all]\n  --json  machine-readable output\n  --all   do not collapse repeated findings\n\nSuppress confirmed false positives with a `remind-ignore[: rule, ...]` comment on the line\nor the line above, or list paths/globs in <project-dir>/.remindignore.');
     return 0;
   }
   const root = path.resolve(args[0] || '.');
@@ -51,18 +53,23 @@ export async function runAudit(argv = process.argv.slice(2)) {
     return 2;
   }
 
-  const files = walk(root);
+  const ignored = loadIgnore(root);
+  const files = walk(root).filter((f) => !ignored(rel(root, f)));
   const ctx = buildContext(root, files);
   const findings = [];
-  const add = (pillar, severity, rule, message, file, line) =>
-    findings.push({ pillar, severity, rule, message, file: file ? path.relative(root, file) : undefined, line });
+  let suppressed = 0;
+  const add = (pillar, severity, rule, message, file, line) => {
+    if (file && line && inlineIgnored(ctx.texts.get(file), line, rule)) { suppressed++; return; }
+    findings.push({ pillar, severity, rule, message, file: file ? rel(root, file) : undefined, line });
+  };
 
   for (const f of ctx.textFiles) scanTextFile(f, ctx, add);
   projectChecks(ctx, add);
+  ctx.stats.suppressed = suppressed;
 
   const errors = findings.filter((f) => f.severity === 'error').length;
   if (flags.has('--json')) {
-    console.log(JSON.stringify({ root, engine: ctx.engine, stats: ctx.stats, findings }, null, 2));
+    console.log(JSON.stringify({ root, engine: ctx.engine, tier: ctx.tier, stats: ctx.stats, findings }, null, 2));
   } else {
     printReport(root, ctx, findings, flags.has('--all'));
   }
@@ -89,6 +96,33 @@ function walk(root) {
     }
   }
   return out;
+}
+
+function rel(root, f) { return path.relative(root, f).split(path.sep).join('/'); }
+
+// .remindignore: one path or glob per line (# comments). `*` stays within a segment, `**` crosses them,
+// a pattern without `/` matches any segment, a trailing `/` matches a directory and everything under it.
+function loadIgnore(root) {
+  const res = safeRead(path.join(root, '.remindignore')).split('\n').map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('#')).map((pat) => {
+      const dir = pat.endsWith('/');
+      const p = pat.replace(/^\/+|\/+$/g, '');
+      const body = p.split('**').map((part) => part.split('*').map((x) => x.split('?').map(escapeRe).join('[^/]')).join('[^/]*')).join('.*');
+      const anchored = pat.startsWith('/') || p.includes('/');
+      return new RegExp(`${anchored ? '^' : '(^|/)'}${body}${dir ? '/' : '(/|$)'}`);
+    });
+  return (relPath) => res.some((re) => re.test(relPath));
+}
+
+function inlineIgnored(text, line, rule) {
+  if (!text) return false;
+  const lines = text.split('\n');
+  return [lines[line - 1], lines[line - 2]].some((ln) => {
+    const m = ln && ln.match(/remind-ignore(?:\s*:\s*([\w,\s-]+))?/);
+    if (!m) return false;
+    if (!m[1]) return true;
+    return m[1].split(/[\s,]+/).filter(Boolean).includes(rule);
+  });
 }
 
 function readText(file) {
@@ -133,10 +167,17 @@ function buildContext(root, files) {
   else if (has('project.godot')) engine = 'godot';
   else if (files.some((f) => f.endsWith('.uproject'))) engine = 'unreal';
   else if (has('Cargo.toml') && /bevy/.test(safeRead(path.join(root, 'Cargo.toml')))) engine = 'bevy';
+  else if (has('default.project.json') || files.some((f) => /\.(luau|rbxlx?|rbxmx?)$/.test(f))) engine = 'roblox';
+  else if (has('game.project')) engine = 'defold';
+  else if (files.some((f) => f.endsWith('.yyp'))) engine = 'gamemaker';
+  else if (has('main.lua') && /\blove\.(update|draw|load|run|graphics)\b/.test(safeRead(path.join(root, 'main.lua')) + safeRead(path.join(root, 'conf.lua')))) engine = 'love2d';
   else if (hasDep(/^phaser$/)) engine = 'web:phaser';
   else if (hasDep(/^three$/)) engine = 'web:three';
   else if (hasDep(/^@babylonjs\//)) engine = 'web:babylon';
   else if (hasDep(/^pixi\.js$|^@pixi\//)) engine = 'web:pixi';
+  else if (hasDep(/^playcanvas$/)) engine = 'web:playcanvas';
+  else if (hasDep(/^(kaplay|kaboom)$/)) engine = 'web:kaplay';
+  else if (hasDep(/^excalibur$/)) engine = 'web:excalibur';
   else {
     const count = (re) => codeFiles.filter((f) => re.test(f)).length;
     const web = count(/\.(js|mjs|cjs|ts|tsx|jsx|vue|svelte|html)$/);
@@ -161,7 +202,10 @@ function buildContext(root, files) {
     physicsLib,
   };
 
-  return { root, files, textFiles: [...texts.keys()], texts, codeFiles, assets, engine, deps, corpus, stats };
+  // Same thresholds as SKILL.md section 1; a guess from size only - contributors and scope also matter.
+  const tier = stats.codeLines < 3000 ? 'T1' : stats.codeLines < 30000 ? 'T2' : 'T3';
+
+  return { root, files, textFiles: [...texts.keys()], texts, codeFiles, assets, engine, tier, deps, corpus, stats };
 }
 
 function safeRead(f) { try { return fs.readFileSync(f, 'utf8'); } catch { return ''; } }
@@ -218,7 +262,7 @@ function scanTextFile(file, ctx, add) {
   if (isJs) scanJs(file, text, lines, ctx, add);
   if (ext === '.cs') scanCSharp(file, lines, add);
   if (ext === '.gd') scanGd(file, lines, add);
-  if (ext === '.lua') lines.forEach((ln, i) => { if (/\bloadstring\s*\(|\bload\s*\(\s*[a-zA-Z_]/.test(ln)) add('security', 'warn', 'exec-untrusted', 'loadstring/load executes code - never on mod, save, or network data', file, i + 1); });
+  if (LUA_EXT.has(ext)) scanLua(file, lines, ctx, add);
   if (ext === '.py') lines.forEach((ln, i) => { if (/pickle\.loads?\(/.test(ln)) add('security', 'warn', 'unsafe-deserialize', 'pickle on untrusted data allows code execution', file, i + 1); });
 
   if (/\.(css|scss|html|vue|svelte|jsx|tsx|js|ts)$/.test(ext)) {
@@ -231,6 +275,7 @@ function scanTextFile(file, ctx, add) {
   }
 
   checkEmoji(lines, file, add);
+  if (/\.(js|mjs|cjs|ts|tsx|jsx|vue|svelte|cs|gd)$/.test(ext)) checkFrameLerp(lines, file, add);
 
   if (lines.length > 800 && !isGenerated(file, text)) {
     add('quality', 'warn', 'god-file', `${lines.length} lines - split by feature (sim/view/ui) unless generated`, file);
@@ -250,6 +295,44 @@ function checkEmoji(lines, file, add) {
     if (/console\.|print\(|Debug\.Log|log\(/.test(ln)) return;
     if (EMOJI_IN_STRING.test(ln)) add('ui', 'warn', 'emoji-icon', 'emoji in a UI string - use a drawn icon family', file, i + 1);
   });
+}
+
+// lerp(a, b, 0.1) once per frame converges faster at higher frame rates.
+const CONST_LERP = /\b(?:\w+\.)?[Ll]erp(?:Unclamped|Angle)?\s*\((?:[^()]|\([^()]*\))*,\s*0?\.\d+f?\s*\)/;
+function checkFrameLerp(lines, file, add) {
+  lines.forEach((ln, i) => {
+    if (/^\s*(\/\/|#|\*)/.test(ln)) return;
+    if (CONST_LERP.test(ln) && !/\b(dt|delta|deltaTime|Time\.deltaTime|fixedDeltaTime)\b/.test(ln)) {
+      add('physics', 'info', 'frame-lerp', 'lerp with a constant factor - frame-rate dependent if run per frame; use 1 - exp(-k*dt) or a damped spring', file, i + 1);
+    }
+  });
+}
+
+function scanLua(file, lines, ctx, add) {
+  lines.forEach((ln, i) => {
+    if (/^\s*--/.test(ln)) return;
+    if (/\bloadstring\s*\(|\bload\s*\(\s*[a-zA-Z_]/.test(ln)) add('security', 'warn', 'exec-untrusted', 'loadstring/load executes code - never on mod, save, or network data', file, i + 1);
+    if (ctx.engine !== 'roblox') return;
+    if (/(^|[^.\w])(wait|spawn|delay)\s*\(/.test(ln)) add('quality', 'info', 'deprecated-api', 'deprecated wait/spawn/delay - use task.wait/task.spawn/task.delay', file, i + 1);
+    if (/:InvokeClient\s*\(/.test(ln)) add('security', 'warn', 'invoke-client', 'server waits on InvokeClient - a client can hang or error it; use RemoteEvents', file, i + 1);
+  });
+  if (ctx.engine !== 'roblox') return;
+  // OnServerEvent handlers that write client-supplied arguments into stats, currency, or health
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/OnServer(?:Event|Invoke)\s*(?::Connect\s*\(\s*)?=?\s*function\s*\(\s*\w+\s*,\s*([^)]*)\)/);
+    if (!m) continue;
+    const params = m[1].split(',').map((p) => p.trim().split(':')[0].trim()).filter((p) => p && p !== '...');
+    if (!params.length) continue;
+    const used = new RegExp(`\\b(${params.map(escapeRe).join('|')})\\b`);
+    const indent = lines[i].match(/^\s*/)[0].length;
+    for (let j = i + 1; j < Math.min(lines.length, i + 80); j++) {
+      const ln = lines[j];
+      if (/^\s*end\b/.test(ln) && ln.match(/^\s*/)[0].length <= indent) break; // handler's closing `end)`
+      if ((/\.Value\s*[+\-*]?=|\.Health\s*=|:TakeDamage\s*\(|:SetAsync\s*\(|:UpdateAsync\s*\(/.test(ln)) && used.test(ln.split(/=|\(/).slice(1).join('='))) {
+        add('security', 'warn', 'remote-trust', 'server handler writes a client-supplied argument into stats/health/data - compute the outcome on the server and validate every argument', file, j + 1);
+      }
+    }
+  }
 }
 
 function scanJs(file, text, lines, ctx, add) {
@@ -340,7 +423,7 @@ function projectChecks(ctx, add) {
   const code = [...texts.entries()].filter(([f]) => CODE_EXT.has(path.extname(f).toLowerCase())).map(([, t]) => t).join('\n');
 
   // Physics: fixed step in custom web loops
-  if (/^web:(custom|three|pixi|babylon)/.test(engine) && /requestAnimationFrame/.test(code)) {
+  if (/^web:(custom|three|pixi|babylon|playcanvas)/.test(engine) && /requestAnimationFrame/.test(code)) {
     if (!/accumulator|\bacc\s*[+-]=|fixed_?step|fixedTimeStep|FIXED_DT|timestep|world\.step\s*\(/i.test(code)) {
       add('physics', 'warn', 'no-fixed-step', 'no fixed-step accumulator found - simulation likely runs on variable frame delta');
     }
@@ -462,7 +545,7 @@ const TAG = { error: 'ERR ', warn: 'WARN', info: 'info' };
 function printReport(root, ctx, findings, showAll) {
   const s = ctx.stats;
   console.log(`\nReMind audit  ${root}`);
-  console.log(`engine: ${ctx.engine}${s.physicsLib ? ` (+${s.physicsLib})` : ''}   code: ${s.codeFiles} files / ${s.codeLines} lines   assets: ${Object.entries(s.assets).filter(([, n]) => n).map(([k, n]) => `${n} ${k}`).join(', ') || 'none'}`);
+  console.log(`engine: ${ctx.engine}${s.physicsLib ? ` (+${s.physicsLib})` : ''}   tier guess: ${ctx.tier}   code: ${s.codeFiles} files / ${s.codeLines} lines   assets: ${Object.entries(s.assets).filter(([, n]) => n).map(([k, n]) => `${n} ${k}`).join(', ') || 'none'}`);
   if (ctx.engine === 'unity' || ctx.engine === 'unreal') console.log('note: unused-asset detection skipped (references are GUID/binary based in this engine)');
 
   for (const p of PILLARS) {
@@ -486,6 +569,7 @@ function printReport(root, ctx, findings, showAll) {
     }
   }
   const errors = findings.filter((f) => f.severity === 'error').length;
+  if (s.suppressed) console.log(`\n${s.suppressed} finding(s) suppressed by remind-ignore comments.`);
   console.log(`\n${findings.length} finding(s), ${errors} error(s). Heuristic scan: confirm each lead in code, then score with audit/scorecard.md.\n`);
 }
 

@@ -2,13 +2,15 @@
 
 Score each pillar from 0 to 5. Use the evidence (code read, audit script output, measured numbers), not impressions. Half points are allowed. Adjust expectations to the tier (T1 jam games are not penalised for missing settings menus; T3 games are).
 
+Tag each score with its strongest evidence (`reference/verify.md`): `[run]` launched and observed, `[test]` automated or headless check, `[read]` code only. **A `[read]`-only pillar scores at most 3**, because feel, readability, and performance cannot be confirmed without running the game.
+
 ## Physics
 | Score | Evidence |
 |-------|----------|
-| 5 | Fixed step + interpolation; values derived and recorded in data; forgiveness mechanics fit the genre; CCD/sweeps on fast objects; layered juice; debug overlay |
+| 5 | Fixed step + interpolation; values derived and recorded in data; forgiveness mechanics fit the genre; CCD/sweeps on fast objects; layered juice; camera on interpolated positions with genre framing; debug overlay |
 | 4 | Fixed step; data-driven tuning; good feel; one or two gaps (e.g. no interpolation or missing debug draw) |
 | 3 | Frame-independent and stable; feel acceptable; magic numbers or missing CCD |
-| 2 | Mostly works but jitter, inconsistent speeds, or physics in render callbacks somewhere |
+| 2 | Mostly works but jitter, inconsistent speeds, camera stutter, or physics in render callbacks somewhere |
 | 1 | Frame-dependent movement, tunnelling, or unstable stacks |
 | 0 | Physics broken or absent where the game needs it |
 | n/a | Game has no physics or movement (e.g. pure card or text game) |
@@ -47,7 +49,7 @@ Score each pillar from 0 to 5. Use the evidence (code read, audit script output,
 ## Quality
 | Score | Evidence |
 |-------|----------|
-| 5 | Measured budgets met on target; pooled hot paths; robustness checklist passed; tests + CI; complete polish pass; architecture fits the tier |
+| 5 | Measured budgets (p95/p99) met on target; pooled hot paths; robustness checklist passed; tests + CI; complete polish pass; architecture fits the tier |
 | 4 | Smooth on target; most edge cases handled; tests for core logic; polish mostly done |
 | 3 | Smooth on dev hardware; a few edge cases untested; little automated testing |
 | 2 | Hitches, god files, or several missing basics (pause, settings, resize) |
@@ -63,12 +65,14 @@ Score each pillar from 0 to 5. Use the evidence (code read, audit script output,
 
 ## Report template
 ```
-ReMind scorecard  (tier: T?, engine: ?, online: ?)
-Physics   ?/5  <one-line evidence>
-Assets    ?/5  <one-line evidence>
-UI        ?/5  <one-line evidence>
-Security  ?/5  <one-line evidence>
-Quality   ?/5  <one-line evidence>
+ReMind scorecard  (mode: build|review|polish, tier: T?, engine: ?, online: ?)
+Physics   ?/5  [run|test|read]  <one-line evidence>
+Assets    ?/5  [run|test|read]  <one-line evidence>
+UI        ?/5  [run|test|read]  <one-line evidence>
+Security  ?/5  [run|test|read]  <one-line evidence>
+Quality   ?/5  [run|test|read]  <one-line evidence>
 Floors: PASS|FAIL (<which>)   Overall: <average of scored pillars>
 Next: <top three improvements, highest impact first>
+Reproduce: <commands the user can run to repeat your checks>
 ```
+In Polish mode write the change per pillar, e.g. `UI  2->4/5  [run]  ...`, and keep the before evidence next to the after evidence.
