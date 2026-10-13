@@ -2,8 +2,6 @@
 
 Score each pillar from 0 to 5. Use the evidence (code read, audit script output, measured numbers), not impressions. Half points are allowed. Adjust expectations to the tier (T1 jam games are not penalised for missing settings menus; T3 games are).
 
-Tag each score with its strongest evidence (`reference/verify.md`): `[run]` launched and observed, `[test]` automated or headless check, `[read]` code only. **A `[read]`-only pillar scores at most 3**, because feel, readability, and performance cannot be confirmed without running the game.
-
 ## Physics
 | Score | Evidence |
 |-------|----------|
@@ -56,23 +54,4 @@ Tag each score with its strongest evidence (`reference/verify.md`): `[run]` laun
 | 1 | Frequent stutter or crashes on common actions |
 | 0 | Does not run |
 
-## Floors (block "done")
-- Physics >= 3 when the core verb is physics-driven.
-- Security >= 3 when anything goes online. Any committed secret = 0 until rotated and removed.
-- UI >= 3.
-- Quality >= 3.
-- No pillar at 0-1 without an explicit, user-accepted reason.
-
-## Report template
-```
-ReMind scorecard  (mode: build|review|polish, tier: T?, engine: ?, online: ?)
-Physics   ?/5  [run|test|read]  <one-line evidence>
-Assets    ?/5  [run|test|read]  <one-line evidence>
-UI        ?/5  [run|test|read]  <one-line evidence>
-Security  ?/5  [run|test|read]  <one-line evidence>
-Quality   ?/5  [run|test|read]  <one-line evidence>
-Floors: PASS|FAIL (<which>)   Overall: <average of scored pillars>
-Next: <top three improvements, highest impact first>
-Reproduce: <commands the user can run to repeat your checks>
-```
-In Polish mode write the change per pillar, e.g. `UI  2->4/5  [run]  ...`, and keep the before evidence next to the after evidence.
+Floors, report template, and evidence tags are in `SKILL.md` §6.

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.0 - 2026-10-13
+
+Leaner context, same or better output.
+
+- `SKILL.md` cut from ~2,900 to ~1,250 words: dense core rules per pillar, duplicate tell list and checklist removed (they live in `ai-tells.md` and the workflow gate). Shorter `description`, which sits in every session's context.
+- "Load only what the task needs" routing table: one reference per task, section-level reads for long files.
+- `reference/engines.md` split into `reference/engines/<engine>.md`; the audit prints which one to read.
+- Audit `--brief` (one line per rule, for agents) and `--pillar <name>` (drill into one pillar). `--json` honours `--pillar`.
+- Scorecard rubric no longer repeats floors and the template from `SKILL.md`.
+
 ## 1.1.0 - 2026-10-11
 
 ### Skill

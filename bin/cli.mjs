@@ -19,7 +19,7 @@ const HELP = `ReMind v${version} - anti-slop skill for games
 Usage
   npx github:growing7696-cmyk/ReMind [install] [options]
   npx github:growing7696-cmyk/ReMind uninstall [options]
-  npx github:growing7696-cmyk/ReMind audit [dir] [--json] [--all]
+  npx github:growing7696-cmyk/ReMind audit [dir] [--brief] [--pillar <name>] [--json] [--all]
 
 Install targets (default: --claude)
   --claude     ~/.claude/skills/${SKILL}        (Claude Code, all projects)

@@ -41,10 +41,17 @@ const PER_RULE_LIMIT = 8;
 // ---------- args ----------
 
 export async function runAudit(argv = process.argv.slice(2)) {
-  const args = argv.filter((a) => !a.startsWith('-'));
-  const flags = new Set(argv.filter((a) => a.startsWith('-')));
+  const pi = argv.indexOf('--pillar');
+  const pillar = pi !== -1 ? argv[pi + 1] : null;
+  if (pi !== -1 && !PILLARS.includes(pillar)) {
+    console.error(`ReMind audit: --pillar needs one of ${PILLARS.join(', ')}`);
+    return 2;
+  }
+  const rest = pi !== -1 ? argv.filter((_, i) => i !== pi && i !== pi + 1) : argv;
+  const args = rest.filter((a) => !a.startsWith('-'));
+  const flags = new Set(rest.filter((a) => a.startsWith('-')));
   if (flags.has('--help') || flags.has('-h')) {
-    console.log('Usage: audit.mjs [project-dir] [--json] [--all]\n  --json  machine-readable output\n  --all   do not collapse repeated findings\n\nSuppress confirmed false positives with a `remind-ignore[: rule, ...]` comment on the line\nor the line above, or list paths/globs in <project-dir>/.remindignore.');
+    console.log('Usage: audit.mjs [project-dir] [--brief] [--pillar <name>] [--json] [--all]\n  --brief          one line per rule (count + first location)\n  --pillar <name>  only physics|assets|ui|security|quality\n  --json           machine-readable output\n  --all            do not collapse repeated findings\n\nSuppress confirmed false positives with a `remind-ignore[: rule, ...]` comment on the line\nor the line above, or list paths/globs in <project-dir>/.remindignore.');
     return 0;
   }
   const root = path.resolve(args[0] || '.');
@@ -67,11 +74,15 @@ export async function runAudit(argv = process.argv.slice(2)) {
   projectChecks(ctx, add);
   ctx.stats.suppressed = suppressed;
 
+  // Exit code reflects every error, even ones outside the --pillar filter.
   const errors = findings.filter((f) => f.severity === 'error').length;
+  const shown = pillar ? findings.filter((f) => f.pillar === pillar) : findings;
   if (flags.has('--json')) {
-    console.log(JSON.stringify({ root, engine: ctx.engine, tier: ctx.tier, stats: ctx.stats, findings }, null, 2));
+    console.log(JSON.stringify({ root, engine: ctx.engine, tier: ctx.tier, stats: ctx.stats, findings: shown }, null, 2));
+  } else if (flags.has('--brief')) {
+    printBrief(ctx, shown, errors);
   } else {
-    printReport(root, ctx, findings, flags.has('--all'));
+    printReport(root, ctx, shown, flags.has('--all'), pillar ? [pillar] : PILLARS);
   }
   return errors > 0 ? 1 : 0;
 }
@@ -542,13 +553,39 @@ const PILLARS = ['physics', 'assets', 'ui', 'security', 'quality'];
 const LABEL = { physics: 'Physics', assets: 'Assets', ui: 'UI', security: 'Security', quality: 'Quality' };
 const TAG = { error: 'ERR ', warn: 'WARN', info: 'info' };
 
-function printReport(root, ctx, findings, showAll) {
+function engineNote(engine) {
+  const base = engine.startsWith('web:') ? 'web' : engine;
+  return ENGINE_NOTES.has(base) ? `reference/engines/${base}.md` : null;
+}
+const ENGINE_NOTES = new Set(['unity', 'godot', 'unreal', 'web', 'bevy', 'roblox', 'love2d', 'gamemaker', 'defold']);
+
+// Compact output for agents: one line per rule, worst first.
+function printBrief(ctx, findings, errors) {
+  const s = ctx.stats;
+  const note = engineNote(ctx.engine);
+  console.log(`engine ${ctx.engine}  tier ${ctx.tier}  ${s.codeLines} lines${note ? `  notes ${note}` : ''}`);
+  const byRule = new Map();
+  for (const f of [...findings].sort((a, b) => sevRank(a.severity) - sevRank(b.severity))) {
+    const k = `${f.pillar}/${f.rule}`;
+    if (!byRule.has(k)) byRule.set(k, []);
+    byRule.get(k).push(f);
+  }
+  for (const [k, group] of byRule) {
+    const f = group[0];
+    const loc = f.file ? ` @ ${f.file}${f.line ? `:${f.line}` : ''}` : '';
+    console.log(`${TAG[f.severity]} ${k} x${group.length}${loc} - ${f.message.includes(' - ') ? f.message.slice(f.message.indexOf(' - ') + 3) : f.message}`);
+  }
+  console.log(`${findings.length} findings, ${errors} errors${s.suppressed ? `, ${s.suppressed} suppressed` : ''}. Drill in: --pillar <name>`);
+}
+
+function printReport(root, ctx, findings, showAll, pillars) {
   const s = ctx.stats;
   console.log(`\nReMind audit  ${root}`);
   console.log(`engine: ${ctx.engine}${s.physicsLib ? ` (+${s.physicsLib})` : ''}   tier guess: ${ctx.tier}   code: ${s.codeFiles} files / ${s.codeLines} lines   assets: ${Object.entries(s.assets).filter(([, n]) => n).map(([k, n]) => `${n} ${k}`).join(', ') || 'none'}`);
+  if (engineNote(ctx.engine)) console.log(`engine notes: ${engineNote(ctx.engine)}`);
   if (ctx.engine === 'unity' || ctx.engine === 'unreal') console.log('note: unused-asset detection skipped (references are GUID/binary based in this engine)');
 
-  for (const p of PILLARS) {
+  for (const p of pillars) {
     const list = findings.filter((f) => f.pillar === p);
     const counts = { error: 0, warn: 0, info: 0 };
     list.forEach((f) => counts[f.severity]++);

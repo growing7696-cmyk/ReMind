@@ -193,6 +193,18 @@ expect(det('kaplay', { 'package.json': JSON.stringify({ dependencies: { kaplay: 
 const help = execFileSync('node', [auditScript, '-h'], { encoding: 'utf8' });
 expect(/Usage/.test(help), '-h prints usage instead of treating it as a directory');
 
+// --- token-lean output modes ---
+const runRaw = (args) => { try { return { code: 0, out: execFileSync('node', [auditScript, ...args], { encoding: 'utf8' }) }; } catch (e) { return { code: e.status, out: e.stdout }; } };
+const brief = runRaw([web, '--brief']);
+expect(brief.code === 1, 'brief: still exits 1 on a secret');
+expect(/^engine web:custom {2}tier T1/.test(brief.out) && /notes reference\/engines\/web\.md/.test(brief.out), 'brief: header with engine, tier, and engine notes path');
+expect(brief.out.split('\n').filter((l) => /^(ERR |WARN|info) /.test(l)).length === new Set(w.out.findings.map((f) => f.pillar + f.rule)).size, 'brief: exactly one line per rule');
+const pil = audit2([web, '--pillar', 'ui', '--json']);
+expect(pil.findings.length > 0 && pil.findings.every((f) => f.pillar === 'ui'), 'pillar: filters findings to one pillar');
+expect(runRaw([web, '--pillar', 'nope']).code === 2, 'pillar: rejects unknown pillar');
+function audit2(args) { return JSON.parse(runRaw(args).out); }
+expect(fs.existsSync(path.join(repo, 'skills', 'remind', 'reference', 'engines', 'roblox.md')), 'engine notes file exists for every detected engine family');
+
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(failed ? `\n${failed} check(s) failed` : '\nall checks passed');
 process.exit(failed ? 1 : 0);
